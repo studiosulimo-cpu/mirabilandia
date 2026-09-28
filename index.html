@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sensitivity BP — Carport FV 7,5 MW + BESS</title>
+<style>
+  :root{
+    --ink:#12212f; --bg:#e9eef2; --panel:#ffffff; --panel-2:#f5f8fa;
+    --line:#d3dbe3; --line-strong:#aebccb; --text:#1a2836; --muted:#61717f;
+    --accent:#0b5fb0; --accent-soft:#e6f0fa;
+    --pos:#0c7a4d; --pos-bg:#e4f2ea; --neg:#b23b2e; --neg-bg:#f8e9e7;
+    --warn:#7d6410; --warn-bg:#fbf4dc;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+    box-sizing:border-box;
+    padding-top:env(safe-area-inset-top,0);
+    padding-bottom:env(safe-area-inset-bottom,0);
+  }
+  *,*::before,*::after{box-sizing:inherit}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--text);font-family:var(--sans);
+    font-size:15px;line-height:1.45;-webkit-text-size-adjust:100%}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+
+  header.top{background:var(--ink);color:#eaf1f7;padding:18px 22px 16px}
+  header.top .wrap{max-width:1240px;margin:0 auto;display:flex;flex-wrap:wrap;
+    align-items:flex-end;gap:12px 24px;justify-content:space-between}
+  header.top h1{margin:0;font-size:20px;font-weight:650;letter-spacing:-.01em}
+  header.top p{margin:4px 0 0;color:#9fb2c2;font-size:13px;max-width:70ch}
+  header.top .meta{font-family:var(--mono);font-size:12px;color:#7f95a8;
+    text-align:right;line-height:1.5}
+  header.top .meta b{color:#c7d6e2;font-weight:600}
+
+  .shell{max-width:1240px;margin:0 auto;padding:20px 16px 60px;
+    display:grid;grid-template-columns:344px minmax(0,1fr);gap:20px;align-items:start}
+  @media(max-width:940px){.shell{grid-template-columns:1fr;padding-top:14px}}
+
+  aside{position:sticky;top:14px;background:var(--panel);border:1px solid var(--line);
+    border-radius:10px;overflow:hidden}
+  @media(max-width:940px){aside{position:static}}
+  aside .ahead{display:flex;justify-content:space-between;align-items:center;
+    padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel-2)}
+  aside .ahead span{font-size:13px;font-weight:650;color:var(--muted)}
+  button.reset{font:inherit;font-size:12px;border:1px solid var(--line-strong);
+    background:#fff;color:var(--accent);border-radius:6px;padding:4px 10px;cursor:pointer}
+  button.reset:hover{background:var(--accent-soft)}
+  fieldset{border:none;border-top:1px solid var(--line);margin:0;padding:12px 16px 14px}
+  fieldset:first-of-type{border-top:none}
+  legend{font-size:11.5px;font-weight:700;letter-spacing:.04em;color:var(--accent);
+    text-transform:uppercase;padding:0;margin:0 0 4px}
+  .field{margin-top:11px}
+  .field:first-child{margin-top:2px}
+  .field label{display:flex;justify-content:space-between;align-items:baseline;
+    font-size:13px;color:var(--text);gap:8px}
+  .field label .val{font-family:var(--mono);font-size:13px;color:var(--accent);font-weight:600}
+  .field input[type=number]{width:100%;margin-top:5px;font:inherit;font-family:var(--mono);
+    padding:6px 8px;border:1px solid var(--line-strong);border-radius:6px;background:#fff}
+  .field input[type=range]{width:100%;margin-top:7px;accent-color:var(--accent)}
+  .field .hint{font-size:11.5px;color:var(--muted);margin-top:3px;line-height:1.35}
+  .seg{display:flex;margin-top:6px;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+  .seg button{flex:1;font:inherit;font-size:12.5px;padding:6px 4px;background:#fff;
+    border:none;border-left:1px solid var(--line);color:var(--muted);cursor:pointer}
+  .seg button:first-child{border-left:none}
+  .seg button[aria-pressed=true]{background:var(--accent);color:#fff;font-weight:600}
+  .toggle{display:flex;align-items:center;gap:9px;margin-top:4px;cursor:pointer;font-size:13px}
+  .toggle input{width:17px;height:17px;accent-color:var(--accent)}
+
+  main{display:flex;flex-direction:column;gap:18px;min-width:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px}
+  .card > h2{margin:0;font-size:13px;font-weight:700;color:var(--muted);
+    padding:12px 18px;border-bottom:1px solid var(--line)}
+
+  /* verdict hero */
+  .verdict{padding:18px 20px;display:grid;grid-template-columns:1fr auto;gap:16px 20px;align-items:center}
+  @media(max-width:620px){.verdict{grid-template-columns:1fr}}
+  .verdict .lead{font-size:15px;line-height:1.5}
+  .verdict .lead b{font-weight:700}
+  .verdict .badge{justify-self:end;text-align:center;background:var(--pos-bg);
+    border:1px solid var(--pos);color:var(--pos);border-radius:9px;padding:10px 16px;min-width:150px}
+  @media(max-width:620px){.verdict .badge{justify-self:start}}
+  .verdict .badge .k{font-size:11px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+  .verdict .badge .v{font-family:var(--mono);font-size:22px;font-weight:700;margin-top:2px}
+  .verdict .badge .s{font-family:var(--mono);font-size:12px;opacity:.85;margin-top:1px}
+
+  /* chart */
+  .chartwrap{padding:14px 18px 6px}
+  svg.chart{width:100%;height:220px;display:block;overflow:visible}
+  .chart .bar{transition:height .18s ease, y .18s ease, fill .18s ease}
+  .chart text{font-family:var(--mono);font-size:12px;fill:var(--text)}
+  .chart .axlab{font-family:var(--sans);font-size:12px;fill:var(--muted)}
+  .chart .refline{stroke:var(--muted);stroke-width:1;stroke-dasharray:4 3}
+  .chart .reftext{font-family:var(--sans);font-size:10.5px;fill:var(--muted)}
+
+  /* tables */
+  .tbl-scroll{overflow-x:auto}
+  table{border-collapse:collapse;width:100%;font-size:13.5px}
+  th,td{padding:9px 12px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+  th:first-child,td:first-child{text-align:left}
+  thead th{font-size:12px;color:var(--muted);font-weight:650;background:var(--panel-2);
+    border-bottom:1px solid var(--line-strong)}
+  tbody td.num,tbody th.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  tbody th{font-weight:500;color:var(--text)}
+  td.best{background:var(--pos-bg);font-weight:700;color:var(--pos)}
+  th.bestcol{color:var(--pos)}
+  tr.sub td,tr.sub th{color:var(--muted);font-size:12.5px;border-bottom:1px dotted var(--line)}
+  tr.section td{background:var(--panel-2);font-size:11px;font-weight:700;letter-spacing:.03em;
+    text-transform:uppercase;color:var(--muted);text-align:left;padding:6px 12px}
+  .pos{color:var(--pos)} .neg{color:var(--neg)}
+
+  /* marginal cards */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;padding:16px 18px}
+  @media(max-width:720px){.steps{grid-template-columns:1fr}}
+  .step{border:1px solid var(--line);border-radius:9px;padding:12px 14px;background:var(--panel-2)}
+  .step .t{font-size:12.5px;color:var(--muted);font-weight:600}
+  .step .dv{font-family:var(--mono);font-size:21px;font-weight:700;margin:6px 0 2px}
+  .step .di{font-family:var(--mono);font-size:12.5px;color:var(--muted)}
+  .step .vd{margin-top:8px;font-size:12px;font-weight:700;padding:3px 8px;border-radius:5px;display:inline-block}
+  .step.good{border-color:var(--pos)} .step.good .dv{color:var(--pos)}
+  .step.good .vd{background:var(--pos-bg);color:var(--pos)}
+  .step.bad{border-color:var(--neg)} .step.bad .dv{color:var(--neg)}
+  .step.bad .vd{background:var(--neg-bg);color:var(--neg)}
+
+  details.detail{padding:0 18px 16px}
+  details.detail summary{cursor:pointer;font-size:13px;color:var(--accent);
+    padding:12px 0 4px;font-weight:600}
+  .foot{font-size:12px;color:var(--muted);line-height:1.55;padding:2px 20px 20px}
+  .foot b{color:var(--text)}
+  .callout{background:var(--warn-bg);border:1px solid #e6d493;border-left:4px solid var(--warn);
+    border-radius:7px;padding:11px 14px;margin:0 18px 16px;font-size:12.5px;color:#5f4d10;line-height:1.5}
+  .callout b{color:var(--warn)}
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="wrap">
+    <div>
+      <h1>Business Plan — Carport FV 7,5 MW + BESS</h1>
+      <p>Modello di sensitività sui 4 scenari di accumulo. Modifica i parametri a sinistra
+         e osserva come reagiscono VAN, TIR, DSCR e payback. Confronto affiancato ai valori dichiarati da EXALTO.</p>
+    </div>
+    <div class="meta">
+      Generazione FV <b>9,51 GWh/anno</b><br>
+      Entrata esercizio <b>2028</b> · orizzonte <b id="mHoriz">20 anni</b><br>
+      Assetto <b>Opzione A</b> (no MSD/MACSE)
+    </div>
+  </div>
+</header>
+
+<div class="shell">
+  <!-- ======================= CONTROLS ======================= -->
+  <aside>
+    <div class="ahead"><span>Parametri</span><button class="reset" id="reset">Ripristina</button></div>
+
+    <fieldset>
+      <legend>Prezzi energia</legend>
+      <div class="field">
+        <label>Prezzo autoconsumo <span class="val" id="lAutoc"></span></label>
+        <input type="range" id="pAutoc" min="0.12" max="0.28" step="0.001">
+        <div class="hint">Acquisto evitato (€/kWh). È la voce di ricavo dominante (≈0,91 M€/anno) e la base con cui è valorizzata anche la scarica del BESS.</div>
+      </div>
+      <div class="field">
+        <label>Escalation autoconsumo <span class="val" id="lAutocEsc"></span></label>
+        <input type="range" id="autocEsc" min="-1" max="3" step="0.1">
+        <div class="hint">Variazione annua del prezzo retail (%/anno). EXALTO: ~0%.</div>
+      </div>
+      <div class="field">
+        <label>Regime RID (immissione)</label>
+        <div class="seg" id="ridMode">
+          <button data-v="decl" aria-pressed="true">PUN calante</button>
+          <button data-v="flat">Piatto / PPA</button>
+        </div>
+        <div class="hint">Le note della dashboard dicono PUN diurno <i>calante</i> 0,104→0,05. La tua ipotesi PPA green implica invece un prezzo <i>piatto</i>. Sono incompatibili: qui li confronti.</div>
+      </div>
+      <div class="field">
+        <label>RID inizio (2028) <span class="val" id="lRidS"></span></label>
+        <input type="range" id="pRidStart" min="0.03" max="0.14" step="0.001">
+      </div>
+      <div class="field" id="ridEndWrap">
+        <label>RID fine (2048) <span class="val" id="lRidE"></span></label>
+        <input type="range" id="pRidEnd" min="0.02" max="0.14" step="0.001">
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Accumulo (BESS)</legend>
+      <div class="field">
+        <label>Rendimento round-trip <span class="val" id="lEta"></span></label>
+        <input type="range" id="eta" min="80" max="100" step="0.5">
+        <div class="hint">EXALTO ha posto <b>100%</b> (irrealistico). Litio reale AC-AC ≈ 86–90%. Riduce l'energia scaricata e quindi il ricavo BES.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Colonnine di ricarica</legend>
+      <label class="toggle"><input type="checkbox" id="colOn" checked> Includi ricavi colonnine</label>
+      <div class="field">
+        <label>Tariffa colonnine <span class="val" id="lCol"></span></label>
+        <input type="range" id="pCol" min="0.3" max="0.9" step="0.01">
+      </div>
+      <div class="field">
+        <label>Moltiplicatore a regime <span class="val" id="lColMult"></span></label>
+        <input type="range" id="colMult" min="1" max="12" step="0.5">
+        <div class="hint">Rampa di occupazione 2028→2048 (20%→100% su 2 turni ≈ ×10). Ipotesi di mobilità elettrica indipendente: spegnila per l'economia FV+BESS pulita.</div>
+      </div>
+    </fieldset>
+
+    <fieldset>
+      <legend>Struttura finanziaria</legend>
+      <div class="field">
+        <label>Modalità di finanziamento</label>
+        <div class="seg" id="finMode">
+          <button data-v="equity" aria-pressed="true">Autofinanziamento</button>
+          <button data-v="bank">Bancario</button>
+        </div>
+        <div class="hint" id="finHint"></div>
+      </div>
+      <div class="field">
+        <label>Tasso di sconto / WACC <span class="val" id="lDisc"></span></label>
+        <input type="range" id="disc" min="4" max="12" step="0.1">
+      </div>
+      <div id="bankFields">
+        <div class="field">
+          <label>Tasso interesse debito <span class="val" id="lRate"></span></label>
+          <input type="range" id="rate" min="1" max="9" step="0.1">
+        </div>
+        <div class="field">
+          <label>Durata finanziamento <span class="val" id="lTenor"></span></label>
+          <input type="number" id="tenor" min="3" max="20" step="1">
+        </div>
+      </div>
+      <div class="field">
+        <label>Aliquota fiscale (su EBIT) <span class="val" id="lTax"></span></label>
+        <input type="range" id="tax" min="0" max="40" step="0.5">
+      </div>
+      <div class="field">
+        <label>OPEX (% ricavi) <span class="val" id="lOpex"></span></label>
+        <input type="range" id="opex" min="3" max="15" step="0.1">
+      </div>
+      <div class="field">
+        <label>Orizzonte analisi (durata BP) <span class="val" id="lYears"></span></label>
+        <input type="number" id="years" min="10" max="30" step="1">
+      </div>
+      <div class="field">
+        <label class="toggle" style="margin-top:0"><input type="checkbox" id="depLink" checked> Ammortamento = durata BP</label>
+        <div id="depManual" style="margin-top:9px">
+          <label>Ammortamento <span class="val" id="lDep"></span></label>
+          <input type="number" id="dep" min="5" max="30" step="1">
+        </div>
+      </div>
+    </fieldset>
+  </aside>
+
+  <!-- ======================= RESULTS ======================= -->
+  <main>
+    <div class="card">
+      <div class="verdict">
+        <div class="lead" id="verdictText"></div>
+        <div class="badge" id="verdictBadge">
+          <div class="k">Taglia ottima</div>
+          <div class="v" id="optSize"></div>
+          <div class="s" id="optVan"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>VAN di progetto per scenario</h2>
+      <div class="chartwrap">
+        <svg class="chart" id="chart" viewBox="0 0 640 220" preserveAspectRatio="xMidYMid meet" aria-hidden="true"></svg>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Indicatori a confronto (calcolati live)</h2>
+      <div class="tbl-scroll">
+        <table id="kpi">
+          <thead><tr><th>KPI</th><th id="h0"></th><th id="h1"></th><th id="h2"></th><th id="h3"></th></tr></thead>
+          <tbody id="kpiBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Analisi marginale — conviene ingrandire la batteria?</h2>
+      <div class="steps" id="steps"></div>
+      <div class="callout" id="marginNote"></div>
+    </div>
+
+    <div class="card">
+      <h2>Dettaglio ricavi — primo anno completo</h2>
+      <div class="tbl-scroll">
+        <table id="rev">
+          <thead><tr><th>Voce</th><th id="r0"></th><th id="r1"></th><th id="r2"></th><th id="r3"></th></tr></thead>
+          <tbody id="revBody"></tbody>
+        </table>
+      </div>
+      <div class="foot" style="padding-top:12px">
+        <b>Come leggere.</b> Riga «BES» = energia scaricata × rendimento × prezzo autoconsumo (scarica autoconsumata la sera).
+        Il valore <i>netto</i> reale della batteria è lo spread tra questo prezzo e il RID diurno perso per caricarla, non il ricavo BES lordo.
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="foot">
+        <b>Nota metodologica.</b> Le quantità di energia (autoconsumo, BES, colonnine, RID) di ciascuno scenario sono quelle della
+        dashboard di EXALTO, derivate dalla loro simulazione oraria su dati POD a quarti d'ora: qui non vengono ricalcolate, si applicano
+        prezzi, rendimento ed escalation. I <b>parametri finanziari</b> (tasso interesse, sconto, fiscalità, ammortamento, OPEX) sono una
+        <b>ricostruzione</b> tarata per avvicinare i KPI dichiarati: sostituiscili con i valori reali del PEF per una calibrazione esatta.
+        Il modello adotta l'assetto «Opzione A» (autoconsumo/arbitraggio) e <b>non</b> include ricavi MSD/MACSE.
+        VAN e TIR sono di progetto (unlevered); DSCR su CFADS al netto imposte lungo la durata del debito.
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+// ---- Scenari (dati dashboard EXALTO) ----
+const SC = [
+  {key:"base",  label:"Senza accumulo", cap:0,     inv:8950000,  debt:6265000, autoc:4603771, bes:0,       col:79200,  rid:4828189},
+  {key:"s2500", label:"2.500 kWh",      cap:2500,  inv:9822000,  debt:6875400, autoc:4603771, bes:795147,  col:105600, rid:4006642},
+  {key:"s5000", label:"5.000 kWh",      cap:5000,  inv:10450000, debt:7315000, autoc:4603771, bes:1250086, col:105600, rid:3551704},
+  {key:"s10000",label:"10.000 kWh",     cap:10000, inv:11600000, debt:8120000, autoc:4603771, bes:1666070, col:105600, rid:3135719},
+];
+// KPI dichiarati (riferimento)
+const REP = {
+  base:  {van:2355734, tir:12.51, dscrMin:1.34, dscrAvg:1.55, pb:6.09},
+  s2500: {van:2821151, tir:12.84, dscrMin:1.36, dscrAvg:1.55, pb:6.29},
+  s5000: {van:2795609, tir:12.49, dscrMin:1.34, dscrAvg:1.52, pb:6.49},
+  s10000:{van:2402602, tir:11.39, dscrMin:1.29, dscrAvg:1.45, pb:6.99},
+};
+
+// ---- Default parametri ----
+const DEF = {
+  pAutoc:0.198, autocEsc:0, ridMode:"decl", pRidStart:0.104, pRidEnd:0.05,
+  eta:100, colOn:true, pCol:0.70, colMult:10,
+  mode:"equity", disc:7.5, rate:5.0, tenor:10, tax:27.9, opex:7.31,
+  dep:20, depLink:true, years:20,
+};
+let P = {...DEF};
+
+// ---- Helpers ----
+const eur = v => (v<0?"−":"")+"€ "+Math.abs(Math.round(v)).toLocaleString("it-IT");
+const eur1= v => (v<0?"−":"")+"€ "+Math.abs(v).toLocaleString("it-IT",{maximumFractionDigits:0});
+const pct = v => v.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+"%";
+const xf  = v => v.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+"x";
+const yrs = v => v.toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})+" anni";
+const c3  = v => "€ "+v.toLocaleString("it-IT",{maximumFractionDigits:3,minimumFractionDigits:3});
+
+// ---- Finanza ----
+function amort(debt,ratePct,tenor){
+  const r=ratePct/100, out=[]; let bal=debt;
+  const pay = r===0 ? debt/tenor : debt*r/(1-Math.pow(1+r,-tenor));
+  for(let t=0;t<tenor;t++){const i=bal*r, pr=pay-i; bal-=pr; out.push({i, pr, ds:pay});}
+  return out;
+}
+function irr(cf){
+  const npv=r=>cf.reduce((a,c,t)=>a+c/Math.pow(1+r,t),0);
+  let lo=-0.9, hi=2.0, fLo=npv(lo), fHi=npv(hi);
+  if(fLo*fHi>0) return NaN;
+  for(let k=0;k<200;k++){const m=(lo+hi)/2, fm=npv(m);
+    if(Math.abs(fm)<1) return m*100;
+    if(fLo*fm<0){hi=m; fHi=fm;} else {lo=m; fLo=fm;}}
+  return (lo+hi)/2*100;
+}
+
+function compute(sc){
+  const bank = P.mode==="bank";
+  const A = bank ? amort(sc.debt,P.rate,P.tenor) : null;
+  const ridEnd = P.ridMode==="flat" ? P.pRidStart : P.pRidEnd;
+  const cf=[-sc.inv]; const dscr=[]; let cum=-sc.inv, pb=null;
+  let y1=null, cumRev=0;
+  for(let t=1;t<=P.years;t++){
+    const f = P.years>1 ? (t-1)/(P.years-1) : 0;
+    const pRid = P.pRidStart + (ridEnd-P.pRidStart)*f;
+    const pAut = P.pAutoc*Math.pow(1+P.autocEsc/100,t-1);
+    const colFac = 1 + (P.colMult-1)*f;
+    const rAut = sc.autoc*pAut;
+    const rBes = sc.bes*(P.eta/100)*pAut;
+    const rCol = P.colOn ? sc.col*P.pCol*colFac : 0;
+    const rRid = sc.rid*pRid;
+    const rev = rAut+rBes+rCol+rRid;
+    cumRev+=rev;
+    const opex = rev*P.opex/100;
+    const ebitda = rev-opex;
+    const dep = t<=P.dep ? sc.inv/P.dep : 0;
+    const ebit = ebitda-dep;
+    const interest = (bank && t<=P.tenor) ? A[t-1].i : 0;
+    const taxLev = Math.max(0,ebit-interest)*P.tax/100;
+    const taxUn  = Math.max(0,ebit)*P.tax/100;
+    const fcf = ebitda-taxUn;
+    cf.push(fcf);
+    if(bank && t<=P.tenor){const cfads=ebitda-taxLev; dscr.push(cfads/A[t-1].ds);}
+    const prev=cum; cum+=fcf;
+    if(pb===null && cum>=0) pb=(t-1)+(-prev)/fcf;
+    if(t===1) y1={rAut,rBes,rCol,rRid,rev,ebitda};
+  }
+  let van=0; for(let t=0;t<cf.length;t++) van+=cf[t]/Math.pow(1+P.disc/100,t);
+  const tir=irr(cf);
+  const dMin=dscr.length?Math.min(...dscr):NaN;
+  const dAvg=dscr.length?dscr.reduce((a,b)=>a+b,0)/dscr.length:NaN;
+  return {van,tir,dscrMin:dMin,dscrAvg:dAvg,pb:pb??P.years,y1,cumRev};
+}
+
+// ---- Render ----
+function render(){
+  if(P.depLink){
+    P.dep=P.years;
+    const de=document.getElementById("dep");
+    if(de){de.value=P.dep; document.getElementById("lDep").textContent=P.dep+" anni";}
+  }
+  const R = SC.map(compute);
+  const vans = R.map(r=>r.van);
+  const maxVan = Math.max(...vans);
+  const best = vans.indexOf(maxVan);
+  const baseVan = R[0].van;
+
+  // header horizon
+  document.getElementById("mHoriz").textContent = P.years+" anni";
+
+  // verdict
+  const vt=document.getElementById("verdictText");
+  const beatBase = R.map((r,i)=>i>0 && r.van>baseVan);
+  const anyBeat = beatBase.some(Boolean);
+  let msg;
+  if(best===0){
+    msg = `Con questi parametri <b>nessuna batteria crea valore</b>: lo scenario senza accumulo ha il VAN più alto. `+
+          `Ogni taglia di BESS peggiora il progetto.`;
+  } else {
+    const worse = [1,2,3].filter(i=>i>best);
+    msg = `Con questi parametri la taglia <b>${SC[best].label}</b> massimizza il VAN. `+
+      (worse.length? `Le taglie superiori (${worse.map(i=>SC[i].label).join(", ")}) <b>distruggono valore marginale</b>: `+
+        `più investimento senza ritorno proporzionale, perché la batteria è vincolata dalla carica, non dalla scarica.`
+        : `È anche la taglia massima considerata.`);
+  }
+  vt.innerHTML=msg;
+  document.getElementById("optSize").textContent=SC[best].label;
+  document.getElementById("optVan").textContent="VAN "+eur(maxVan);
+  const badge=document.getElementById("verdictBadge");
+  badge.style.background=best===0?"var(--warn-bg)":"var(--pos-bg)";
+  badge.style.borderColor=best===0?"var(--warn)":"var(--pos)";
+  badge.style.color=best===0?"var(--warn)":"var(--pos)";
+
+  // chart
+  drawChart(R,best,baseVan);
+
+  // KPI table
+  ["h0","h1","h2","h3"].forEach((id,i)=>{
+    const el=document.getElementById(id); el.textContent=SC[i].label;
+    el.className = i===best ? "bestcol":"";
+  });
+  const rows=[
+    {k:"Investimento netto", f:(r,i)=>eur(SC[i].inv), plain:true},
+    {k:"VAN di progetto", f:(r,i)=>eur(r.van), key:"van"},
+    {k:"TIR di progetto", f:(r)=>isNaN(r.tir)?"n/d":pct(r.tir)},
+    {k:"DSCR minimo", f:(r)=>isNaN(r.dscrMin)?"n/d":xf(r.dscrMin)},
+    {k:"DSCR medio", f:(r)=>isNaN(r.dscrAvg)?"n/d":xf(r.dscrAvg)},
+    {k:"Payback semplice", f:(r)=>yrs(r.pb)},
+  ];
+  let html="";
+  rows.forEach(row=>{
+    html+="<tr><th>"+row.k+"</th>";
+    R.forEach((r,i)=>{
+      const isBest = row.key==="van" && i===best;
+      html+=`<td class="num${isBest?" best":""}">${row.f(r,i)}</td>`;
+    });
+    html+="</tr>";
+  });
+  // reference
+  html+='<tr class="section"><td colspan="5">Dichiarato da EXALTO (riferimento)</td></tr>';
+  const rep=SC.map(s=>REP[s.key]);
+  html+='<tr class="sub"><th>VAN dichiarato</th>'+rep.map(x=>`<td class="num">${eur(x.van)}</td>`).join("")+"</tr>";
+  html+='<tr class="sub"><th>Δ calcolato − dichiarato</th>'+R.map((r,i)=>{
+    const d=r.van-rep[i].van; const cl=d>=0?"pos":"neg";
+    return `<td class="num ${cl}">${(d>=0?"+":"−")+"€ "+Math.abs(Math.round(d)).toLocaleString("it-IT")}</td>`;
+  }).join("")+"</tr>";
+  html+='<tr class="sub"><th>TIR dichiarato</th>'+rep.map(x=>`<td class="num">${pct(x.tir)}</td>`).join("")+"</tr>";
+  document.getElementById("kpiBody").innerHTML=html;
+
+  // marginal steps
+  const steps=document.getElementById("steps"); steps.innerHTML="";
+  for(let i=1;i<SC.length;i++){
+    const dv=R[i].van-R[i-1].van, di=SC[i].inv-SC[i-1].inv;
+    const good=dv>0;
+    const el=document.createElement("div");
+    el.className="step "+(good?"good":"bad");
+    el.innerHTML=`<div class="t">${SC[i-1].label} → ${SC[i].label}</div>`+
+      `<div class="dv num">${(dv>=0?"+":"−")}€ ${Math.abs(Math.round(dv)).toLocaleString("it-IT")}</div>`+
+      `<div class="di">VAN marginale · invest. +€ ${Math.round(di).toLocaleString("it-IT")}</div>`+
+      `<div class="vd">${good?"Crea valore":"Distrugge valore"}</div>`;
+    steps.appendChild(el);
+  }
+  const note=document.getElementById("marginNote");
+  if(P.eta>=99.5){
+    note.innerHTML="<b>Rendimento al 100%.</b> Stai usando l'assunzione di EXALTO. Prova a portarlo a ~88%: il ricavo BES cala e i vantaggi delle batterie si assottigliano ancora.";
+  } else {
+    note.innerHTML=`<b>Rendimento ${pct(P.eta)}.</b> Il ricavo da scarica è ridotto di conseguenza. Confronta i VAN marginali con lo scenario a 100% per misurare quanto l'assunzione irrealistica gonfiava il caso batteria.`;
+  }
+
+  // revenue detail Y1
+  ["r0","r1","r2","r3"].forEach((id,i)=>document.getElementById(id).textContent=SC[i].label);
+  const rv=[
+    {k:"Autoconsumo", f:r=>r.y1.rAut},
+    {k:"Scarica BESS", f:r=>r.y1.rBes},
+    {k:"Colonnine", f:r=>r.y1.rCol},
+    {k:"Immissione (RID)", f:r=>r.y1.rRid},
+    {k:"Ricavi totali", f:r=>r.y1.rev, bold:true},
+    {k:"EBITDA", f:r=>r.y1.ebitda, bold:true},
+  ];
+  let rh="";
+  rv.forEach(row=>{
+    rh+="<tr"+(row.bold?' style="font-weight:700"':"")+"><th"+(row.bold?' style="font-weight:700;color:var(--text)"':"")+">"+row.k+"</th>";
+    R.forEach(r=>{rh+=`<td class="num">${eur(row.f(r))}</td>`;});
+    rh+="</tr>";
+  });
+  document.getElementById("revBody").innerHTML=rh;
+}
+
+function drawChart(R,best,baseVan){
+  const svg=document.getElementById("chart");
+  const W=640,H=220, padL=64, padR=16, padT=14, padB=34;
+  const vans=R.map(r=>r.van);
+  const maxV=Math.max(...vans,baseVan), minV=Math.min(...vans,0);
+  const top=Math.max(maxV*1.12, maxV+200000), bot=Math.min(minV,0);
+  const y=v=> padT + (top-v)/(top-bot)*(H-padT-padB);
+  const plotW=W-padL-padR, bw=plotW/R.length*0.6, gap=plotW/R.length;
+  let s="";
+  // zero / grid baseline
+  const y0=y(0);
+  s+=`<line x1="${padL}" y1="${y0}" x2="${W-padR}" y2="${y0}" stroke="var(--line-strong)" stroke-width="1"/>`;
+  // y labels (0, top)
+  [bot,(top+bot)/2,top].forEach(v=>{
+    const yy=y(v);
+    s+=`<text class="axlab" x="${padL-10}" y="${yy+4}" text-anchor="end">${(v/1e6).toLocaleString("it-IT",{maximumFractionDigits:1})}M</text>`;
+    s+=`<line x1="${padL}" y1="${yy}" x2="${W-padR}" y2="${yy}" stroke="var(--line)" stroke-width="1" opacity="${v===0?0:0.6}"/>`;
+  });
+  // reference line = base VAN
+  const yb=y(baseVan);
+  s+=`<line class="refline" x1="${padL}" y1="${yb}" x2="${W-padR}" y2="${yb}"/>`;
+  s+=`<text class="reftext" x="${W-padR}" y="${yb-5}" text-anchor="end">soglia «senza accumulo»</text>`;
+  // bars
+  R.forEach((r,i)=>{
+    const cx=padL + gap*i + gap/2;
+    const x=cx-bw/2;
+    const vy=y(r.van), h=Math.abs(vy-y0);
+    const yy=Math.min(vy,y0);
+    let fill="var(--accent)";
+    if(i===best) fill="var(--pos)";
+    else if(i>0 && r.van<baseVan) fill="var(--neg)";
+    else if(i>0) fill="#6f93b8";
+    s+=`<rect class="bar" x="${x}" y="${yy}" width="${bw}" height="${h}" rx="3" fill="${fill}"/>`;
+    s+=`<text x="${cx}" y="${vy-7 < padT+10 ? vy+16 : vy-7}" text-anchor="middle" style="font-size:11.5px;font-weight:700;fill:${fill}">${(r.van/1e6).toLocaleString("it-IT",{minimumFractionDigits:2,maximumFractionDigits:2})}M</text>`;
+    s+=`<text class="axlab" x="${cx}" y="${H-padB+18}" text-anchor="middle">${SC[i].label}</text>`;
+  });
+  svg.innerHTML=s;
+}
+
+// ---- Bindings ----
+function bindRange(id,key,fmt,labId){
+  const el=document.getElementById(id), lab=document.getElementById(labId);
+  const upd=()=>{lab.textContent=fmt(parseFloat(el.value));};
+  el.addEventListener("input",()=>{P[key]=parseFloat(el.value); upd(); render();});
+  el._sync=()=>{el.value=P[key]; upd();};
+  return el;
+}
+function bindNum(id,key,fmt,labId){
+  const el=document.getElementById(id), lab=document.getElementById(labId);
+  const upd=()=>{lab.textContent=fmt(parseFloat(el.value));};
+  el.addEventListener("input",()=>{const v=parseFloat(el.value); if(!isNaN(v)){P[key]=v; upd(); render();}});
+  el._sync=()=>{el.value=P[key]; upd();};
+  return el;
+}
+
+const controls=[
+  bindRange("pAutoc","pAutoc",c3,"lAutoc"),
+  bindRange("autocEsc","autocEsc",v=>v.toLocaleString("it-IT",{maximumFractionDigits:1})+" %/anno","lAutocEsc"),
+  bindRange("pRidStart","pRidStart",c3,"lRidS"),
+  bindRange("pRidEnd","pRidEnd",c3,"lRidE"),
+  bindRange("eta","eta",v=>v.toLocaleString("it-IT",{maximumFractionDigits:1})+" %","lEta"),
+  bindRange("pCol","pCol",c3,"lCol"),
+  bindRange("colMult","colMult",v=>"×"+v.toLocaleString("it-IT",{maximumFractionDigits:1}),"lColMult"),
+  bindRange("disc","disc",v=>v.toLocaleString("it-IT",{maximumFractionDigits:1})+" %","lDisc"),
+  bindRange("rate","rate",v=>v.toLocaleString("it-IT",{maximumFractionDigits:1})+" %","lRate"),
+  bindNum("tenor","tenor",v=>v+" anni","lTenor"),
+  bindRange("tax","tax",v=>v.toLocaleString("it-IT",{maximumFractionDigits:1})+" %","lTax"),
+  bindRange("opex","opex",v=>v.toLocaleString("it-IT",{maximumFractionDigits:2})+" %","lOpex"),
+  bindNum("dep","dep",v=>v+" anni","lDep"),
+  bindNum("years","years",v=>v+" anni","lYears"),
+];
+
+// RID mode segmented
+const ridEndWrap=document.getElementById("ridEndWrap");
+document.querySelectorAll("#ridMode button").forEach(b=>{
+  b.addEventListener("click",()=>{
+    P.ridMode=b.dataset.v;
+    syncRidMode(); render();
+  });
+});
+function syncRidMode(){
+  document.querySelectorAll("#ridMode button").forEach(b=>
+    b.setAttribute("aria-pressed", b.dataset.v===P.ridMode));
+  ridEndWrap.style.opacity = P.ridMode==="flat"?0.4:1;
+  ridEndWrap.style.pointerEvents = P.ridMode==="flat"?"none":"auto";
+}
+
+// colonnine toggle
+document.getElementById("colOn").addEventListener("change",e=>{P.colOn=e.target.checked; render();});
+
+// financing mode
+const bankFields=document.getElementById("bankFields");
+const finHint=document.getElementById("finHint");
+document.querySelectorAll("#finMode button").forEach(b=>{
+  b.addEventListener("click",()=>{P.mode=b.dataset.v; syncFinMode(); render();});
+});
+function syncFinMode(){
+  document.querySelectorAll("#finMode button").forEach(b=>
+    b.setAttribute("aria-pressed", b.dataset.v===P.mode));
+  const bank=P.mode==="bank";
+  bankFields.style.display = bank ? "" : "none";
+  finHint.innerHTML = bank
+    ? "Debito ~70% dell'investimento (dai dati EXALTO). Abilita interesse, durata e DSCR."
+    : "Nessun debito: l'intero investimento è capitale proprio. Il DSCR non si applica e VAN/TIR di progetto coincidono con quelli dell'equity.";
+}
+
+// ammortamento link
+const depManual=document.getElementById("depManual");
+const depInput=document.getElementById("dep");
+document.getElementById("depLink").addEventListener("change",e=>{P.depLink=e.target.checked; syncDep(); render();});
+function syncDep(){
+  depInput.disabled=P.depLink;
+  depManual.style.opacity=P.depLink?0.5:1;
+}
+
+// reset
+document.getElementById("reset").addEventListener("click",()=>{
+  P={...DEF};
+  controls.forEach(c=>c._sync());
+  document.getElementById("colOn").checked=P.colOn;
+  document.getElementById("depLink").checked=P.depLink;
+  syncRidMode(); syncFinMode(); syncDep(); render();
+});
+
+// init
+controls.forEach(c=>c._sync());
+syncRidMode(); syncFinMode(); syncDep();
+render();
+</script>
+</body>
+</html>
